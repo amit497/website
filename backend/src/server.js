@@ -2,6 +2,8 @@ const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
 
+const app = require('../server');
+
 // 1. Load environment variables
 dotenv.config();
 
