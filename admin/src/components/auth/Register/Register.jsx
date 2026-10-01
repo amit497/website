@@ -6,7 +6,7 @@ import '../Login/Login.css';
 const API_BASE_URL = 'https://backend-gamma-umber-55.vercel.app';
 
 const getApiBaseUrl = () => {
-  const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL;
+  const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.API_BASE_URL;
   if (envUrl) {
     return envUrl.trim().replace(/\/+$/, '');
   }
