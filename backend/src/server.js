@@ -46,7 +46,7 @@ try {
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://candle-7jh2.onrender.com'
+  'https://backend-3vhjsrpj9-amit497s-projects.vercel.app'
 ];
 
 app.use(cors({
