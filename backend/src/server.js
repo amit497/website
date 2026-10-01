@@ -53,21 +53,21 @@ if (!process.env.VERCEL) {
 }
 
 const allowedOrigins = [
-  'https://admin-five-rho-30.vercel.app',
-  'http://localhost:5173',
+  'https://admin-five-rho-30.vercel.app', // Your production frontend
+  'http://localhost:5173',               // Local Vite dev server
   'http://localhost:3000'
 ];
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || !origin) {
+  if (!origin || allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
   );
 
   // Instantly resolve browser preflight requests
