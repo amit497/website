@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock, FaEnvelope, FaPhone } from 'react-icons/fa';
 import '../Login/Login.css';
 
-const VITE_API_URL = 'https://backend-gamma-umber-55.vercel.app';
+const API_BASE_URL = 'https://backend-gamma-umber-55.vercel.app';
 
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL;
   if (envUrl) {
     return envUrl.trim().replace(/\/+$/, '');
   }
-  return VITE_API_URL;
+  return API_BASE_URL;
 };
 
 export default function Register() {
