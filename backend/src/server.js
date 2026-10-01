@@ -43,13 +43,11 @@ const allowedOrigins = [
 ];
 // 5. Global Middlewares
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Blocked by CORS'));
-    }
-  },
+  origin: [
+    "http://localhost:5173",                     // লোকাল টেস্টিং
+    "https://your-frontend-project.vercel.app",  // আপনার Vercel ওয়েবসাইট URL
+    "https://your-admin-project.vercel.app"      // আপনার Vercel অ্যাডমিন URL
+  ],
   credentials: true
 }));
 // Set CORP header BEFORE static route so browser doesn't block cross-port asset loading
