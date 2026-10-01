@@ -3,8 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock, FaEnvelope, FaPhone } from 'react-icons/fa';
 import '../Login/Login.css';
 
-// Prefer environment variables (e.g., Vite: import.meta.env.VITE_API_URL, CRA: process.env.REACT_APP_API_URL)
-const API_BASE_URL = import.meta.env?.VITE_API_URL || 'https://candle-7jh2.onrender.com';
+const DEFAULT_API_URL = 'https://backend-3vhjsrpj9-amit497s-projects.vercel.app';
+
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL;
+  if (envUrl) {
+    return envUrl.trim().replace(/\/+$/, '');
+  }
+  return DEFAULT_API_URL;
+};
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -23,8 +30,9 @@ export default function Register() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    if (errorMsg) setErrorMsg(''); // Clear error when user edits
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errorMsg) setErrorMsg('');
   };
 
   const handleRegister = async (e) => {
@@ -32,9 +40,13 @@ export default function Register() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Client-side validation
-    const { name, username, email, phone, password, confirmPassword } = formData;
-    if (!name || !username || !email || !phone || !password || !confirmPassword) {
+    const trimmedName = formData.name.trim();
+    const trimmedUsername = formData.username.trim();
+    const trimmedEmail = formData.email.trim();
+    const trimmedPhone = formData.phone.trim();
+    const { password, confirmPassword } = formData;
+
+    if (!trimmedName || !trimmedUsername || !trimmedEmail || !trimmedPhone || !password || !confirmPassword) {
       setErrorMsg('Please fill out all required fields.');
       return;
     }
@@ -51,9 +63,18 @@ export default function Register() {
 
     setLoading(true);
 
+    const API_BASE_URL = getApiBaseUrl();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
     try {
-      // Exclude confirmPassword before sending payload to the backend
-      const { confirmPassword: _, ...payload } = formData;
+      const payload = {
+        name: trimmedName,
+        username: trimmedUsername,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        password
+      };
 
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
@@ -61,13 +82,14 @@ export default function Register() {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed. Please try again.');
+        throw new Error(data.message || `Registration failed with status ${response.status}`);
       }
 
       setSuccessMsg('Registration successful! Redirecting to login...');
@@ -75,122 +97,167 @@ export default function Register() {
         navigate('/login');
       }, 1500);
     } catch (err) {
-      setErrorMsg(err.message || 'Could not connect to server. Check your network.');
+      console.error('Registration error details:', err);
+      if (err.name === 'AbortError') {
+        setErrorMsg('Connection timed out. The server took too long to respond. Please try again.');
+      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        setErrorMsg(`Cannot connect to backend server at ${API_BASE_URL}. Ensure your backend is running and CORS is configured.`);
+      } else {
+        setErrorMsg(err.message || 'Registration failed. Please check your network and try again.');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
 
   return (
     <div className="login-container">
-      <form onSubmit={handleRegister} className="login-card" style={{ width: '450px' }}>
+      <form onSubmit={handleRegister} className="login-card" style={{ maxWidth: '450px', width: '100%' }}>
         <h2>Create Account</h2>
 
-        {/* Feedback Messages */}
         {errorMsg && (
-          <div style={{ color: '#dc2626', backgroundColor: '#fee2e2', padding: '8px 12px', borderRadius: '4px', marginBottom: '12px', fontSize: '14px' }}>
+          <div
+            style={{
+              color: '#dc2626',
+              backgroundColor: '#fee2e2',
+              padding: '10px 14px',
+              borderRadius: '6px',
+              marginBottom: '15px',
+              fontSize: '13px',
+              border: '1px solid #fca5a5',
+              lineHeight: '1.4'
+            }}
+          >
             {errorMsg}
           </div>
         )}
+
         {successMsg && (
-          <div style={{ color: '#15803d', backgroundColor: '#dcfce7', padding: '8px 12px', borderRadius: '4px', marginBottom: '12px', fontSize: '14px' }}>
+          <div
+            style={{
+              color: '#15803d',
+              backgroundColor: '#dcfce7',
+              padding: '10px 14px',
+              borderRadius: '6px',
+              marginBottom: '15px',
+              fontSize: '13px',
+              border: '1px solid #86efac',
+              lineHeight: '1.4'
+            }}
+          >
             {successMsg}
           </div>
         )}
 
         <div className="input-group">
-          <label>Full Name</label>
+          <label htmlFor="reg-name">Full Name</label>
           <div className="input-wrapper">
             <FaUser className="input-icon" />
-            <input 
-              type="text" 
+            <input
+              id="reg-name"
+              type="text"
               name="name"
-              value={formData.name} 
-              onChange={handleChange} 
-              placeholder="e.g. Amit Kumar Samanta" 
-              required 
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="e.g. Amit Kumar Samanta"
+              required
+              disabled={loading}
             />
           </div>
         </div>
 
         <div className="input-group">
-          <label>Username</label>
+          <label htmlFor="reg-username">Username</label>
           <div className="input-wrapper">
             <FaUser className="input-icon" />
-            <input 
-              type="text" 
+            <input
+              id="reg-username"
+              type="text"
               name="username"
-              value={formData.username} 
-              onChange={handleChange} 
-              placeholder="e.g. amit_admin" 
-              required 
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="e.g. amit_admin"
+              required
+              disabled={loading}
+              autoCapitalize="none"
+              autoCorrect="off"
             />
           </div>
         </div>
 
         <div className="input-group">
-          <label>Email Address</label>
+          <label htmlFor="reg-email">Email Address</label>
           <div className="input-wrapper">
             <FaEnvelope className="input-icon" />
-            <input 
-              type="email" 
+            <input
+              id="reg-email"
+              type="email"
               name="email"
-              value={formData.email} 
-              onChange={handleChange} 
-              placeholder="e.g. amit@example.com" 
-              required 
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="e.g. amit@example.com"
+              required
+              disabled={loading}
+              autoCapitalize="none"
             />
           </div>
         </div>
 
         <div className="input-group">
-          <label>Phone Number</label>
+          <label htmlFor="reg-phone">Phone Number</label>
           <div className="input-wrapper">
             <FaPhone className="input-icon" />
-            <input 
-              type="tel" 
+            <input
+              id="reg-phone"
+              type="tel"
               name="phone"
-              value={formData.phone} 
-              onChange={handleChange} 
-              placeholder="+8801XXXXXXXXX" 
-              required 
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="+8801XXXXXXXXX"
+              required
+              disabled={loading}
             />
           </div>
         </div>
 
         <div className="input-group">
-          <label>Password</label>
+          <label htmlFor="reg-password">Password</label>
           <div className="input-wrapper">
             <FaLock className="input-icon" />
-            <input 
-              type="password" 
+            <input
+              id="reg-password"
+              type="password"
               name="password"
-              value={formData.password} 
-              onChange={handleChange} 
-              placeholder="Enter secure password" 
-              required 
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter secure password"
+              required
+              disabled={loading}
             />
           </div>
         </div>
 
         <div className="input-group">
-          <label>Confirm Password</label>
+          <label htmlFor="reg-confirmPassword">Confirm Password</label>
           <div className="input-wrapper">
             <FaLock className="input-icon" />
-            <input 
-              type="password" 
+            <input
+              id="reg-confirmPassword"
+              type="password"
               name="confirmPassword"
-              value={formData.confirmPassword} 
-              onChange={handleChange} 
-              placeholder="Re-enter password" 
-              required 
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Re-enter password"
+              required
+              disabled={loading}
             />
           </div>
         </div>
 
-        <button 
-          type="submit" 
-          className="login-btn" 
+        <button
+          type="submit"
+          className="login-btn"
           style={{ marginTop: '10px', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           disabled={loading}
         >
@@ -199,12 +266,13 @@ export default function Register() {
 
         <div className="register-link" style={{ marginTop: '15px' }}>
           Already have an account?{' '}
-          <a 
-            href="#login" 
-            onClick={(e) => { e.preventDefault(); navigate('/login'); }}
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}
           >
             Login here
-          </a>
+          </button>
         </div>
       </form>
     </div>

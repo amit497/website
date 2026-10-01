@@ -10,7 +10,15 @@ const cors = require('cors');
 
 // 2. Database connection
 const connectDB = require('./config/db');
-connectDB();
+
+// Execute DB connection with safe error handling
+(async () => {
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('Failed to initialize database connection:', err.message);
+  }
+})();
 
 // 3. Import Routes
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -24,40 +32,56 @@ const brandRoutes = require('./routes/brandRoutes');
 const stockhistoryRoutes = require('./routes/stockHistoryRoutes');
 const purchaseRoutes = require('./routes/purchaseRoutes');
 const usersRoutes = require('./routes/userRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 
-// 4. Ensure uploads directories exist (Local development support)
-const uploadsDir = path.join(__dirname, 'uploads', 'categories');
-const productUploadsDir = path.join(__dirname, 'uploads', 'products');
+// 4. Ensure uploads directories exist (Local development only; Vercel is read-only)
+if (!process.env.VERCEL) {
+  try {
+    const uploadsDir = path.join(__dirname, 'uploads', 'categories');
+    const productUploadsDir = path.join(__dirname, 'uploads', 'products');
 
-try {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    if (!fs.existsSync(productUploadsDir)) {
+      fs.mkdirSync(productUploadsDir, { recursive: true });
+    }
+  } catch (err) {
+    console.warn('Upload directory creation skipped:', err.message);
   }
-  if (!fs.existsSync(productUploadsDir)) {
-    fs.mkdirSync(productUploadsDir, { recursive: true });
-  }
-} catch (err) {
-  console.log('Upload directory check skipped in read-only environment');
 }
 
-// 5. Global Middlewares & Dynamic CORS
-// const allowedOrigins = [
-//   'http://localhost:5173',
-//   'http://localhost:3000',
-//   'https://backend-3vhjsrpj9-amit497s-projects.vercel.app'
-// ];
+// 5. CORS & Middleware Configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.CLIENT_URL
+].filter(Boolean);
 
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Fallback to permissive access; replace with callback(new Error('Not allowed by CORS')) if strict domain locking is required
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  })
+);
 
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 6. Serve static uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -74,11 +98,11 @@ app.use('/api/brands', brandRoutes);
 app.use('/api/stock-history', stockhistoryRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/dashboard', dashboardRoutes);
 
-// Root route
+// Root route for health check
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'success', message: 'API is running smoothly on Vercel!' });
+  res.status(200).json({ status: 'success', message: 'API is running smoothly!' });
 });
 
 // 8. 404 Route Handler
@@ -94,14 +118,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 10. Local Server Runner & Vercel Export
+// 10. Local Server Runner & Vercel Serverless Export
 const PORT = process.env.PORT || 5000;
 
-if (process.env.NODE_ENV !== 'production') {
+if (!process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-// এটি Vercel Serverless-এর জন্য বাধ্যতামূলক
+// Required for Vercel Serverless Functions
 module.exports = app;

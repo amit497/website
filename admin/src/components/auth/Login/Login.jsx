@@ -3,17 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock } from 'react-icons/fa';
 import './Login.css';
 
-// Checks for VITE_API_URL or VITE_API_BASE_URL; falls back to localhost only in dev mode
+const DEFAULT_API_URL = 'https://backend-3vhjsrpj9-amit497s-projects.vercel.app';
+
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL;
   if (envUrl) {
-    return envUrl.replace(/\/+$/, '');
+    return envUrl.trim().replace(/\/+$/, '');
   }
-  // If in production on Vercel but env var is missing, don't invent a broken :5000 URL
-  if (import.meta.env?.PROD) {
-    console.warn('VITE_API_URL environment variable is missing in production!');
-  }
-  return 'http://localhost:5000';
+  return DEFAULT_API_URL;
 };
 
 export default function Login({ setIsAuthenticated }) {
@@ -40,12 +37,10 @@ export default function Login({ setIsAuthenticated }) {
     setLoading(true);
 
     const API_BASE_URL = getApiBaseUrl();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     try {
-      // Abort controller timeout extended to 45s to account for Render free tier spin-up
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000);
-
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -60,8 +55,6 @@ export default function Login({ setIsAuthenticated }) {
         signal: controller.signal
       });
 
-      clearTimeout(timeoutId);
-
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -72,11 +65,20 @@ export default function Login({ setIsAuthenticated }) {
         throw new Error('No authentication token returned by the server.');
       }
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user || {}));
+      // Store in localStorage if rememberMe is true, otherwise use sessionStorage
+      const storage = rememberMe ? localStorage : sessionStorage;
+      
+      // Clean up opposite storage to avoid stale credential conflicts
+      (rememberMe ? sessionStorage : localStorage).removeItem('token');
+      (rememberMe ? sessionStorage : localStorage).removeItem('user');
+
+      storage.setItem('token', data.token);
+      storage.setItem('user', JSON.stringify(data.user || {}));
       
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
+      } else {
+        localStorage.removeItem('rememberMe');
       }
 
       if (typeof setIsAuthenticated === 'function') {
@@ -87,13 +89,14 @@ export default function Login({ setIsAuthenticated }) {
     } catch (err) {
       console.error('Login error details:', err);
       if (err.name === 'AbortError') {
-        setErrorMessage('Connection timed out. The backend server might be waking up from sleep. Please try again.');
+        setErrorMessage('Connection timed out. The server took too long to respond. Please try again.');
       } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        setErrorMessage(`Cannot connect to backend server at ${API_BASE_URL}. Ensure your Render backend is running and CORS is configured.`);
+        setErrorMessage(`Cannot connect to backend server at ${API_BASE_URL}. Ensure your backend is running and CORS is configured.`);
       } else {
         setErrorMessage(err.message || 'Invalid login credentials.');
       }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -104,33 +107,36 @@ export default function Login({ setIsAuthenticated }) {
         <h2>Admin Login</h2>
 
         {errorMessage && (
-          <div style={{
-            color: '#dc2626',
-            backgroundColor: '#fee2e2',
-            padding: '10px 14px',
-            borderRadius: '6px',
-            marginBottom: '15px',
-            fontSize: '13px',
-            border: '1px solid #fca5a5',
-            lineHeight: '1.4'
-          }}>
+          <div
+            style={{
+              color: '#dc2626',
+              backgroundColor: '#fee2e2',
+              padding: '10px 14px',
+              borderRadius: '6px',
+              marginBottom: '15px',
+              fontSize: '13px',
+              border: '1px solid #fca5a5',
+              lineHeight: '1.4'
+            }}
+          >
             {errorMessage}
           </div>
         )}
 
         <div className="input-group">
-          <label>Username or Email</label>
+          <label htmlFor="login-username">Username or Email</label>
           <div className="input-wrapper">
             <FaUser className="input-icon" />
-            <input 
-              type="text" 
-              value={username} 
+            <input
+              id="login-username"
+              type="text"
+              value={username}
               onChange={(e) => {
                 setUsername(e.target.value);
                 if (errorMessage) setErrorMessage('');
-              }} 
-              placeholder="Enter your username or email" 
-              required 
+              }}
+              placeholder="Enter your username or email"
+              required
               disabled={loading}
               autoCapitalize="none"
               autoCorrect="off"
@@ -139,18 +145,19 @@ export default function Login({ setIsAuthenticated }) {
         </div>
 
         <div className="input-group">
-          <label>Password</label>
+          <label htmlFor="login-password">Password</label>
           <div className="input-wrapper">
             <FaLock className="input-icon" />
-            <input 
-              type="password" 
-              value={password} 
+            <input
+              id="login-password"
+              type="password"
+              value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (errorMessage) setErrorMessage('');
-              }} 
-              placeholder="••••••••" 
-              required 
+              }}
+              placeholder="••••••••"
+              required
               disabled={loading}
             />
           </div>
@@ -158,26 +165,27 @@ export default function Login({ setIsAuthenticated }) {
 
         <div className="login-options">
           <label className="remember-me">
-            <input 
-              type="checkbox" 
-              checked={rememberMe} 
-              onChange={(e) => setRememberMe(e.target.checked)} 
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
               disabled={loading}
             />
             Remember Me
           </label>
-          <a 
-            href="#forgot" 
-            onClick={(e) => { e.preventDefault(); navigate('/auth/forgot-password'); }} 
+          <button
+            type="button"
+            onClick={() => navigate('/auth/forgot-password')}
             className="forgot-password"
+            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
           >
             Forgot Password?
-          </a>
+          </button>
         </div>
 
-        <button 
-          type="submit" 
-          className="login-btn" 
+        <button
+          type="submit"
+          className="login-btn"
           disabled={loading}
           style={{ opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
         >
@@ -186,12 +194,13 @@ export default function Login({ setIsAuthenticated }) {
 
         <div className="register-link">
           Don't have an account?{' '}
-          <a 
-            href="#register" 
-            onClick={(e) => { e.preventDefault(); navigate('/auth/register'); }}
+          <button
+            type="button"
+            onClick={() => navigate('/auth/register')}
+            style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}
           >
             Register
-          </a>
+          </button>
         </div>
       </form>
     </div>
