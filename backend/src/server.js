@@ -4,131 +4,81 @@ const dotenv = require('dotenv');
 const express = require('express');
 const cors = require('cors');
 
-// 1. Load environment variables
 dotenv.config();
 
-// 2. Database connection
+// 1. Connect Database
 const connectDB = require('./config/db');
+connectDB().catch((err) => console.error('MongoDB connection error:', err.message));
 
-(async () => {
-  try {
-    await connectDB();
-  } catch (err) {
-    console.error('Failed to initialize database connection:', err.message);
-  }
-})();
-
-// 3. Initialize Express app (ONLY ONCE)
 const app = express();
 
-// 4. Import Routes
-const categoryRoutes = require('./routes/categoryRoutes');
-const subCategoryRoutes = require('./routes/subCategoryRoutes');
-const subChildCategoryRoutes = require('./routes/subChildCategoryRoutes');
-const productRoutes = require('./routes/productRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const authRoutes = require('./routes/authRoutes');
-const customerRoutes = require('./routes/customerRoutes');
-const brandRoutes = require('./routes/brandRoutes');
-const stockhistoryRoutes = require('./routes/stockHistoryRoutes');
-const purchaseRoutes = require('./routes/purchaseRoutes');
-const usersRoutes = require('./routes/userRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
+// 2. Simple, Universal CORS Setup
+app.use(cors({
+  origin: [
+    'https://admin-five-rho-30.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
 
-// 5. Ensure uploads directories exist (Local development only; Vercel is read-only)
-if (!process.env.VERCEL) {
-  try {
-    const uploadsDir = path.join(__dirname, 'uploads', 'categories');
-    const productUploadsDir = path.join(__dirname, 'uploads', 'products');
-
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    if (!fs.existsSync(productUploadsDir)) {
-      fs.mkdirSync(productUploadsDir, { recursive: true });
-    }
-  } catch (err) {
-    console.warn('Upload directory creation skipped:', err.message);
-  }
-}
-
-const allowedOrigins = [
-  'https://admin-five-rho-30.vercel.app', // Your production frontend
-  'http://localhost:5173',               // Local Vite dev server
-  'http://localhost:3000'
-];
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (!origin || allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'false');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-  );
-
-  // Instantly resolve browser preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  next();
-});
-
-app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-});
-
+// Express parses JSON & form data
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 7. Serve static uploads folder
+// 3. Static Uploads (Local development only; Vercel filesystem is read-only)
+if (!process.env.VERCEL) {
+  try {
+    const categoriesDir = path.join(__dirname, 'uploads', 'categories');
+    const productsDir = path.join(__dirname, 'uploads', 'products');
+    if (!fs.existsSync(categoriesDir)) fs.mkdirSync(categoriesDir, { recursive: true });
+    if (!fs.existsSync(productsDir)) fs.mkdirSync(productsDir, { recursive: true });
+  } catch (err) {
+    console.warn('Upload folder skipped:', err.message);
+  }
+}
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 8. Mount API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/subcategories', subCategoryRoutes);
-app.use('/api/subchildcategories', subChildCategoryRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/brands', brandRoutes);
-app.use('/api/stock-history', stockhistoryRoutes);
-app.use('/api/purchases', purchaseRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+// 4. API Routes
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/subcategories', require('./routes/subCategoryRoutes'));
+app.use('/api/subchildcategories', require('./routes/subChildCategoryRoutes'));
+app.use('/api/products', require('./routes/productRoutes'));
+app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/customers', require('./routes/customerRoutes'));
+app.use('/api/brands', require('./routes/brandRoutes'));
+app.use('/api/stock-history', require('./routes/stockHistoryRoutes'));
+app.use('/api/purchases', require('./routes/purchaseRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
-// Root route for health check
+// 5. Health Check
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API is running smoothly!' });
 });
 
-// 9. 404 Route Handler
+// 6. 404 Handler
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
-// 10. Global Error Handler
+// 7. Global Error Handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled Server Error:', err.stack || err.message);
+  console.error('Unhandled Error:', err.stack || err.message);
   res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error'
   });
 });
 
-// 11. Local Server Runner
+// 8. Local Server Listener
 const PORT = process.env.PORT || 5000;
-
 if (!process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-// Export app for local tests and Vercel handler
 module.exports = app;
