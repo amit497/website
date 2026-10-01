@@ -1,17 +1,28 @@
 const mongoose = require('mongoose');
 
-const connectDB = async () => {
-  try {
-    // ডিবাগ করার জন্য চেক করছি .env থেকে ইউআরআই ঠিকমতো আসছে কি না
-    if (!process.env.MONGODB_URI) {
-      throw new Error("MONGODB_URI is undefined in environment variables!");
-    }
+let isConnected = false;
 
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+const connectDB = async () => {
+  if (isConnected) {
+    return;
+  }
+
+  const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+
+  if (!mongoUri) {
+    throw new Error('MONGO_URI is missing from environment variables');
+  }
+
+  try {
+    const db = await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000, // Fail fast (5s) instead of hanging the function
+    });
+
+    isConnected = db.connections[0].readyState === 1;
+    console.log('MongoDB connected successfully');
   } catch (error) {
-    console.error(`Database Connection Error: ${error.message}`);
-    process.exit(1);
+    console.error('MongoDB connection error:', error.message);
+    throw error;
   }
 };
 
