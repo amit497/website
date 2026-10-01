@@ -13,16 +13,7 @@ connectDB().catch((err) => console.error('MongoDB connection error:', err.messag
 const app = express();
 
 // 2. Simple, Universal CORS Setup
-app.use(cors({
-  origin: [
-    'https://admin-five-rho-30.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:3000'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
-}));
+app.use(cors());
 
 // Express parses JSON & form data
 app.use(express.json({ limit: '10mb' }));
