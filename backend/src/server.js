@@ -43,25 +43,13 @@ try {
 }
 
 // 5. Global Middlewares & Dynamic CORS
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'https://backend-3vhjsrpj9-amit497s-projects.vercel.app'
-];
+// const allowedOrigins = [
+//   'http://localhost:5173',
+//   'http://localhost:3000',
+//   'https://backend-3vhjsrpj9-amit497s-projects.vercel.app'
+// ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Blocked by CORS policy'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
