@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock, FaEnvelope, FaPhone } from 'react-icons/fa';
 import '../Login/Login.css';
 
-const API_BASE_URL = 'https://backend-gamma-umber-55.vercel.app';
+const API_BASE_URL = 'https://backend-3vhjsrpj9-amit497s-projects.vercel.app';
 
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.API_BASE_URL;
