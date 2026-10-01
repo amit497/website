@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
 
-// 1. Load environment variables first before any route or config loads
+// 1. Load environment variables
 dotenv.config();
 
 const express = require('express');
@@ -10,8 +10,6 @@ const cors = require('cors');
 
 // 2. Database connection
 const connectDB = require('./config/db');
-
-// Call DB connection
 connectDB();
 
 // 3. Import Routes
@@ -29,28 +27,42 @@ const usersRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// 4. Ensure the uploads directory exists on server start
+// 4. Ensure uploads directories exist (Local development support)
 const uploadsDir = path.join(__dirname, 'uploads', 'categories');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+const productUploadsDir = path.join(__dirname, 'uploads', 'products');
+
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  if (!fs.existsSync(productUploadsDir)) {
+    fs.mkdirSync(productUploadsDir, { recursive: true });
+  }
+} catch (err) {
+  console.log('Upload directory check skipped in read-only environment');
 }
 
-// 5. Global Middlewares
-
+// 5. Global Middlewares & Dynamic CORS
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:3000',
   'https://candle-7jh2.onrender.com'
 ];
-// 5. Global Middlewares
+
 app.use(cors({
-  origin: [
-    "http://localhost:5173",                     // লোকাল টেস্টিং
-    "https://your-frontend-project.vercel.app",  // আপনার Vercel ওয়েবসাইট URL
-    "https://your-admin-project.vercel.app"      // আপনার Vercel অ্যাডমিন URL
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Blocked by CORS policy'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-// Set CORP header BEFORE static route so browser doesn't block cross-port asset loading
+
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
@@ -60,12 +72,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 6. Serve static uploads folder
-// app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-const productUploadsDir = path.join(__dirname, 'uploads', 'products');
-if (!fs.existsSync(productUploadsDir)) {
-  fs.mkdirSync(productUploadsDir, { recursive: true });
-}
 
 // 7. Mount API Routes
 app.use('/api/auth', authRoutes);
@@ -83,7 +90,7 @@ app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 // Root route
 app.get('/', (req, res) => {
-  res.send('API is running smoothly...');
+  res.status(200).json({ status: 'success', message: 'API is running smoothly on Vercel!' });
 });
 
 // 8. 404 Route Handler
@@ -99,10 +106,14 @@ app.use((err, req, res, next) => {
   });
 });
 
+// 10. Local Server Runner & Vercel Export
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-  console.log(`Local Access:   http://localhost:${PORT}`);
-  console.log(`Network Access: http://192.168.0.181:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// এটি Vercel Serverless-এর জন্য বাধ্যতামূলক
+module.exports = app;
