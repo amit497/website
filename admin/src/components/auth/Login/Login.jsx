@@ -3,14 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock } from 'react-icons/fa';
 import './Login.css';
 
-const API_BASE_URL = 'https://backend-3vhjsrpj9-amit497s-projects.vercel.app';
+// সক্রিয় লাইভ ব্যাকএন্ড প্রোডাকশন ডোমেইন
+const DEFAULT_API_BASE_URL = 'https://backend-gamma-umber-55.vercel.app';
 
 const getApiBaseUrl = () => {
-  const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.API_BASE_URL;
+  const envUrl =
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.API_BASE_URL) ||
+    (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL);
+
   if (envUrl) {
     return envUrl.trim().replace(/\/+$/, '');
   }
-  return API_BASE_URL;
+  return DEFAULT_API_BASE_URL;
 };
 
 export default function Login({ setIsAuthenticated }) {
@@ -36,12 +41,12 @@ export default function Login({ setIsAuthenticated }) {
 
     setLoading(true);
 
-    const API_BASE_URL = getApiBaseUrl();
+    const apiUrl = getApiBaseUrl();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,8 +95,8 @@ export default function Login({ setIsAuthenticated }) {
       console.error('Login error details:', err);
       if (err.name === 'AbortError') {
         setErrorMessage('Connection timed out. The server took too long to respond. Please try again.');
-      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        setErrorMessage(`Cannot connect to backend server at ${API_BASE_URL}. Ensure your backend is running and CORS is configured.`);
+      } else if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+        setErrorMessage(`Cannot connect to backend server at ${apiUrl}. Ensure your backend is running and CORS is configured.`);
       } else {
         setErrorMessage(err.message || 'Invalid login credentials.');
       }
