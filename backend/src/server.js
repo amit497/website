@@ -14,7 +14,7 @@ const app = express();
 
 // 2. CORS Setup
 const corsOptions = {
-  origin: '*', // Or specify your frontend URL: 'https://your-frontend.vercel.app'
+  origin: 'https://admin-five-rho-30.vercel.app', // Or specify your frontend URL: 'https://your-frontend.vercel.app'
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
