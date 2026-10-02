@@ -23,6 +23,12 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle explicit preflight for all routes
 
+// Backend-এর app.js বা server.js-এ
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'unload=*');
+  next();
+});
+
 // Express parses JSON & form data
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
