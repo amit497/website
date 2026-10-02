@@ -12,8 +12,16 @@ connectDB().catch((err) => console.error('MongoDB connection error:', err.messag
 
 const app = express();
 
-// 2. Simple, Universal CORS Setup
-app.use(cors());
+// 2. CORS Setup
+const corsOptions = {
+  origin: '*', // Or specify your frontend URL: 'https://your-frontend.vercel.app'
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle explicit preflight for all routes
 
 // Express parses JSON & form data
 app.use(express.json({ limit: '10mb' }));
