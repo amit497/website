@@ -15,7 +15,7 @@ const app = express();
 // 2. CORS Setup
 const allowedOrigins = [
   'https://admin-five-rho-30.vercel.app',
-  'http://localhost:3000',
+  'https://admin-nine-beta-31.vercel.app',
   'http://localhost:5173'
 ];
 
