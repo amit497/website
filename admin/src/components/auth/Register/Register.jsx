@@ -4,7 +4,7 @@ import { FaUser, FaLock, FaEnvelope, FaPhone } from 'react-icons/fa';
 import '../Login/Login.css';
 
 // Default production backend URL (trailing slashes stripped)
-const DEFAULT_API_BASE_URL = 'https://backend-nine-beta-31.vercel.app';
+const DEFAULT_API_BASE_URL = 'https://localhost:5000'.replace(/\/+$/, '') ;
 
 /**
  * Resolves the API Base URL with the following priority:
