@@ -13,27 +13,13 @@ connectDB().catch((err) => console.error('MongoDB connection error:', err.messag
 const app = express();
 
 // 2. CORS Setup
-const allowedOrigins = [
-  'https://admin-five-rho-30.vercel.app',
-  'https://admin-nine-beta-31.vercel.app',
-  'http://localhost:5173'
-];
+// const allowedOrigins = [
+//   'https://admin-five-rho-30.vercel.app',
+//   'https://admin-nine-beta-31.vercel.app',
+//   'http://localhost:5173'
+// ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Postman, curl বা সার্ভার-টু-সার্ভার রিকোয়েস্টের জন্য !origin চেক
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true); // প্রয়োজনে ডেভেলপমেন্টের সুবিধার জন্য সব এলাও করতে পারেন
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  })
-);
+app.use(cors());
 
 // Express 4/5-এ preflight হ্যান্ডেল করার সঠিক উপায়:
 app.options('*', cors());
