@@ -3,20 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock, FaEnvelope, FaPhone } from 'react-icons/fa';
 import '../Login/Login.css';
 
-// সক্রিয় ব্যাকএন্ড প্রোডাকশন ডোমেইন
-const DEFAULT_API_BASE_URL = 'https://backend-nine-beta-31.vercel.app/';
+// Default production backend URL (trailing slashes stripped)
+const DEFAULT_API_BASE_URL = 'https://backend-nine-beta-31.vercel.app';
 
-const getApiBaseUrl = () => {
+/**
+ * Resolves the API Base URL with the following priority:
+ * 1. Environment variables (Vite or Create-React-App)
+ * 2. Local network/host resolution if running locally (Desktop & Mobile testing)
+ * 3. Default production URL fallback
+ */
+export const getApiBaseUrl = () => {
+  // 1. Check environment variables safely across bundlers
   const envUrl =
     (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
     (typeof import.meta !== 'undefined' && import.meta.env?.API_BASE_URL) ||
     (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL);
 
-  if (envUrl) {
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
     return envUrl.trim().replace(/\/+$/, '');
   }
-  return DEFAULT_API_BASE_URL;
+
+  // 2. Localhost & Local Area Network (LAN) fallback for mobile testing
+  if (typeof window !== 'undefined' && window.location) {
+    const { hostname } = window.location;
+
+    // Matches localhost, 127.0.0.1, or local subnet IPs (e.g., 192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    const isLocalOrLAN =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      /^192\.168\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
+
+    if (isLocalOrLAN) {
+      return `http://${hostname}:5000`;
+    }
+  }
+
+  // 3. Fallback to production default
+  return DEFAULT_API_BASE_URL.replace(/\/+$/, '');
 };
+
+// Export the resolved base URL directly for convenience
+export const API_BASE_URL = getApiBaseUrl();
 
 export default function Register() {
   const [formData, setFormData] = useState({
